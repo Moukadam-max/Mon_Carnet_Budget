@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Carnet BUDGET - FCFA</title>
+<style>
+    * { box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', Arial; margin:0; background:#e8f5e9; color:#333;
+    position:relative; /* IMPORTANT POUR LE FILIGRANE */
+  }
+
+  /* ===== FILIGRANE EN FOND ===== */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background-image: url('logo.png');
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.06; /* 0.03 = très discret, 0.1 = plus visible */
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  header {
+    background:linear-gradient(90deg, #2e7d32, #43a047); color:white;
+    padding:15px 25px; display:flex; align-items:center; gap:15px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.2); position:relative; z-index:1;
+  }
+
+  /* ===== LOGO EN HAUT À GAUCHE ===== */
+.logo-header {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    border: 3px solid gold;
+    object-fit: cover;
+  }
+
+  header div h1 { margin:0; font-size:22px; }
+  header div p { margin:0; font-size:13px; opacity:0.9; }
+
+.container { max-width:1000px; margin:20px auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1); position:relative; z-index:1; }
+.menu button { width:32%; margin:0.5%; }
+  input, button { width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; font-size:15px; }
+  button { background:#2e7d32; color:white; border:none; cursor:pointer; font-weight:bold; }
+  button:hover { background:#1b5e20; }
+.profil { display:flex; align-items:center; gap:20px; border:1px solid #ddd; padding:15px; border-radius:10px; margin:15px 0; background:#f9fff9; }
+.profil img { width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #2e7d32; }
+.admin { display:none; background:#fffde7; padding:15px; border-radius:8px; margin-top:15px; overflow-x:auto; }
+.hidden { display:none; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+  th, td { border:1px solid #ddd; padding:10px; text-align:left; }
+  th { background:#2e7d32; color:white; }
+.success { background:#d4edda; padding:15px; border-radius:8px; margin:15px 0; border:1px solid #c3e6cb; }
+.btn-whatsapp { background:#25D366; }
+.btn-download { background:#ff9800; }
+.prix { font-size:24px; color:#2e7d32; font-weight:bold; }
+.logout { background:#d32f2f; }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- LOGO AJOUTÉ ICI -->
+  <img src="logo.png" alt="Logo Mon Carnet BUDGET" class="logo-header">
+  <div>
+    <h1>📒 Mon Carnet BUDGET</h1>
+    <p>Le carnet simple pour gérer ton argent en FCFA | 2000F - 10000F</p>
+  </div>
+</header>
+
+<div class="container">
+  <div id="menu" class="menu">
+    <button onclick="show('inscription')">1. Créer mon Compte</button>
+    <button onclick="show('connexion')">2. Se Connecter</button>
+    <button onclick="show('adminLogin')">3. Espace Admin</button>
+  </div>
+
+  <!-- INSCRIPTION -->
+  <div id="inscription" class="hidden">
+    <h3>Créer mon Compte Mon Carnet BUDGET</h3>
+    <input type="text" id="nom" placeholder="Nom Complet" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="tel" id="tel" placeholder="Numéro MoMo/Moov: 0190000" required>
+    <input type="password" id="pass" placeholder="Mot de passe" required>
+    <label><b>Photo de Profil :</b></label>
+    <input type="file" id="photo" accept="image/*" required>
+    <button onclick="creerCompte()">S’inscrire et Recevoir mon Carnet</button>
+    <p id="msgInsc"></p>
+  </div>
+
+  <!-- CADEAU APRES INSCRIPTION -->
+  <div id="zoneCadeau" class="hidden success">
+    <h3>🎁 Bienvenue! Voici ton Carnet BUDGET</h3>
+    <p>Télécharge-le et commence à gérer ton argent</p>
+    <button class="btn-download" onclick="telechargerExcel()">📥 Télécharger Mon_Carnet_BUDGET.xlsx</button>
+    <button class="btn-whatsapp" id="btnWhatsApp">📱 Me l’envoyer sur WhatsApp</button>
+  </div>
+
+  <!-- CONNEXION MEMBRE -->
+  <div id="connexion" class="hidden">
+    <h3>Connexion Membre</h3>
+    <input type="email" id="emailConnect" placeholder="Ton Email">
+    <input type="password" id="passConnect" placeholder="Mot de passe">
+    <button onclick="connecterMembre()">Se Connecter</button>
+    <div id="profilMembre"></div>
+  </div>
+
+  <!-- CONNEXION ADMIN -->
+  <div id="adminLogin" class="hidden">
+    <h3>Espace Administrateur</h3>
+    <input type="password" id="passAdmin" placeholder="Mot de passe admin">
+    <button onclick="connecterAdmin()">Entrer</button>
+    <div id="panelAdmin" class="admin"></div>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKeyvar admin = require("firebase-admin");
+
+var serviceAccount = require("path/to/serviceAccountKey.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+    authDomain: "COLLE_TON_AUTH_DOMAIN",
+    projectId: "COLLE_TON_PROJECT_ID",
+    storageBucket: "COLLE_TON_STORAGE_BUCKET",
+    messagingSenderId: "COLLE_TON_MESSAGING_SENDER_ID",
+    appId: "COLLE_TON_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  const PASS_ADMIN = "admin2026_CHANGE_MOI";
+  let membreConnecte = null;
+  let membreDocId = null;
+
+  window.show = (id) => {
+    ['inscription','connexion','adminLogin','zoneCadeau'].forEach(x=>document.getElementById(x).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+  }
+
+  window.creerCompte = async () => {
+    const nom = document.getElementById('nom').value;
+    const email = document.getElementById('email').value;
+    const tel = document.getElementById('tel').value;
+    const pass = document.getElementById('pass').value;
+    const file = document.getElementById('photo').files[0];
+    if(!file) return alert("Ajoute une photo de profil");
+    document.getElementById('msgInsc').innerText = "Création en cours...";
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCredential.user;
+      const storageRef = ref(storage, 'photos/' + user.uid);
+      await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(storageRef);
+      await addDoc(collection(db, "membres"), {
+        uid: user.uid, nom, email, tel, photo: photoURL, solde: 0, statut: "Actif", date: new Date()
+      });
+      document.getElementById('msgInsc').innerText = "";
+      show('zoneCadeau');
+      const lienSite = window.location.href;
+      const message = `Salut ${nom}! 🎉 Bienvenue sur Mon Carnet BUDGET.\n\nTélécharge ton fichier Excel ici: ${lienSite}\n\nGère ton argent en FCFA.`;
+      document.getElementById('btnWhatsApp').onclick = () => {
+        window.open(`https://wa.me/229${tel}?text=${encodeURIComponent(message)}`, '_blank');
+      }
+    } catch (error) { document.getElementById('msgInsc').innerText = "Erreur: " + error.message; }
+  }
+
+  window.connecterMembre = async () => {
+    const email = document.getElementById('emailConnect').value;
+    const pass = document.getElementById('passConnect').value;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const querySnapshot = await getDocs(collection(db, "membres"));
+      querySnapshot.forEach((docu) => {
+        if(docu.data().uid == userCredential.user.uid){
+          membreConnecte = docu.data();
+          membreDocId = docu.id;
+          document.getElementById('profilMembre').innerHTML = `
+            <div class="profil">
+              <img src="${membreConnecte.photo}">
+              <div>
+                <h4>${membreConnecte.nom}</h4>
+                <p>Tel: ${membreConnecte.tel}</p>
+                <p class="prix">Solde: ${membreConnecte.solde} FCFA</p>
+                <button class="btn-download" onclick="telechargerExcel()">📥 Télécharger mon Carnet</button>
+                <button class="logout" onclick="deconnexion()">Se Déconnecter</button>
+              </div>
+            </div>
+          `;
+        }
+      });
+    } catch (error) { alert("Email ou mot de passe incorrect"); }
+  }
+
+  window.deconnexion = async () => {
+    await signOut(auth);
+    document.getElementById('profilMembre').innerHTML = "";
+    show('menu');
+  }
+
+  window.connecterAdmin = async () => {
+    if(document.getElementById('passAdmin').value == PASS_ADMIN){
+      let html = "<h4>Tous les Membres - Total: </h4><table><tr><th>Photo</th><th>Nom</th><th>Email</th><th>Tel</th><th>Solde FCFA</th><th>Action</th></tr>";
+      let total = 0;
+      const querySnapshot = await getDocs(collection(db, "membres"));
+      querySnapshot.forEach((docu) => {
+        let m = docu.data();
+        total += m.solde;
+        html += `<tr>
+          <td><img src="${m.photo}" width="50"></td>
+          <td>${m.nom}</td>
+          <td>${m.email}</td>
+          <td>${m.tel}</td>
+          <td>${m.solde} FCFA</td>
+          <td><button onclick="faireDepot('${docu.id}', ${m.solde})">+ Dépôt</button></td>
+        </tr>`;
+      });
+      html += `</table><h3>Total à payer: ${total} FCFA</h3>`;
+      document.getElementById('panelAdmin').innerHTML = html;
+      document.getElementById('panelAdmin').style.display = 'block';
+    } else { alert("Mauvais mot de passe admin"); }
+  }
+
+  window.faireDepot = async (id, ancienSolde) => {
+    let montant = prompt("Montant à déposer en FCFA :");
+    if(montant &&!isNaN(montant)){
+      const docRef = doc(db, "membres", id);
+      await updateDoc(docRef, { solde: ancienSolde + parseInt(montant) });
+      alert(montant + " FCFA ajoutés");
+      connecterAdmin();
+    }
+  }
+
+  window.telechargerExcel = () => {
+    const link = document.createElement('a');
+    link.href = 'Mon_Carnet_BUDGET.xlsx';
+    link.download = 'Mon_Carnet_BUDGET.xlsx';
+    link.click();
+  }
+</script>
+</body>
+</html>
